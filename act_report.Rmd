@@ -1,0 +1,311 @@
+---
+title: "act_report"
+author: "Ryan Mezera"
+date: "November 16, 2018"
+output: html_document
+---
+
+
+
+# Act Report
+
+### The Data
+Data from WeRateDogs twitter was gathered from 3 different sources and combined into one file which we will use for analysis.  The process for gathering the data and some general info is as follows:
+
+1) The first data set was provided by Udacity and manually downloaded.  This file contained tweet id's, tweet text, dog ratings, dog names, dog stages, and other data that will not be used at this time.
+2) The second data set was programatically downloaded from a URL provided by Udacity.  The file contained tweet id's, image URL's, and 3 image recognition predictions with probabilities.  The URL is as follows:  https://d17h27t6h515a5.cloudfront.net/topher/2017/August/599fd2ad_image-predictions/image-predictions.tsv
+3) The third data set was pulled from the twitter archive of WeRateDogs using Python's Tweepy library and tweet id's.  The JSON data for each tweet was pulled and tweet id, retweet count, favorite count, and possible sensitivity status was scraped from the JSON data.
+
+The 3 data sets were combined by matching tweet id's and will be used for the following analysis.
+
+
+```{r, echo=FALSE}
+# pull in the data
+df = read.csv('twitter_archive_master.csv')
+```
+
+### Analysis
+
+For data analysis we will focus on ratings, retweets, and favorite counts as metrics. We want to see if user rating correlate with retweets and/or favorite counts. We also want to evaluate dog stages to see if it effects user ratings, retweets and/or favorite counts.
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+
+```
+
+#### Univariate analysis
+
+We will focus our analysis on user ratings, retweet counts, favorite counts, and dog stage.
+
+##### User Rating
+
+```{r, echo=FALSE}
+summary(df$rating)
+```
+
+```{r, echo=FALSE}
+#Histogram
+ggplot(data = df[df$rating<3,],
+       aes(x = rating))+
+    geom_histogram(bins = 30)+
+  coord_cartesian(xlim = c(0,3))
+```
+
+```{r, echo=FALSE}
+ggplot(data = df[df$rating<3,],
+              aes( x = 1, y = rating) ) + 
+    geom_jitter(alpha = 0.3 ) +
+    geom_boxplot(alpha = 0.2, color = 'red' )
+```
+
+Here we can see user ratings are mostly around 1.10.  There are a few outliers as high as 177.6, but most of the ratings are 1 or above.
+
+
+##### Retweet Count
+
+```{r, echo=FALSE}
+summary(df$retweet_count)
+```
+
+```{r, echo=FALSE}
+#Histogram
+grid.arrange(
+  
+  ggplot(data = df,
+         aes(x = retweet_count))+
+      geom_histogram(bins = 30),
+  
+  ggplot(data = df,
+         aes(x = retweet_count))+
+      geom_histogram(bins = 30)+
+    coord_cartesian(xlim=c(0,25000))
+  )
+```
+
+```{r, echo=FALSE}
+grid.arrange(
+  
+  ggplot(data = df,
+                aes( x = 1, y = retweet_count) ) + 
+      geom_jitter(alpha = 0.3 ) +
+      geom_boxplot(alpha = 0.2, color = 'red' ),
+  
+  ggplot(data = df,
+                aes( x = 1, y = retweet_count) ) + 
+      geom_jitter(alpha = 0.3 ) +
+      geom_boxplot(alpha = 0.2, color = 'red' )+
+    coord_cartesian(ylim = c(0,10000)),
+  
+  ncol = 2
+
+)
+```
+
+Most of the retweet counts are under 3258 retweets with half of the retweet counts under 1329.  There are a number of outliers with some as high as 84157 retweets.  We can see the histogram is skewed right with a majority of the retweet counts on the lower end.
+
+##### Favorite count
+
+
+```{r, echo=FALSE}
+summary(df$favorite_count)
+```
+
+```{r, echo=FALSE}
+#Histogram
+grid.arrange(
+  
+  ggplot(data = df,
+         aes(x = favorite_count))+
+      geom_histogram(bins = 30),
+  
+  ggplot(data = df,
+         aes(x = favorite_count))+
+      geom_histogram(bins = 30)+
+    coord_cartesian(xlim=c(0,50000))
+  )
+```
+
+```{r, echo=FALSE}
+grid.arrange(
+  
+  ggplot(data = df,
+                aes( x = 1, y = favorite_count) ) + 
+      geom_jitter(alpha = 0.3 ) +
+      geom_boxplot(alpha = 0.2, color = 'red' ),
+  
+  ggplot(data = df,
+                aes( x = 1, y = favorite_count) ) + 
+      geom_jitter(alpha = 0.3 ) +
+      geom_boxplot(alpha = 0.2, color = 'red' )+
+    coord_cartesian(ylim = c(0,50000)),
+  
+  ncol = 2
+
+)
+```
+
+Favorite counts are very similar to retweet counts in how they are distibuted, but favorite counts and retweet counts are different in scale.  People tend to favorite a tweet more than they retweet it.  The histogram is also skewed right with most of the favorite counts on the lower end.
+
+##### Dog stage
+
+```{r, echo=FALSE}
+table(df$dog_stage)
+```
+
+```{r,echo=FALSE}
+ggplot(data = df,
+       aes(x = dog_stage))+
+  geom_bar(aes(color = dog_stage))
+```
+
+For a large majority of the tweets the dog stage is not categorized.  A number of tweets used two or more dog stages to categorize the dogs. The most popular dog stages were pupper and doggo.
+
+#### Bivariate Analysis
+
+###### User rating
+
+```{r,echo=FALSE}
+cor.test(df$rating,df$retweet_count)
+```
+
+```{r,echo=FALSE}
+ggplot(data = df,
+         aes(x = retweet_count, y = rating))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(ylim = c(0,3), xlim = c(0,25000))
+```
+
+```{r,echo=FALSE}
+cor.test(df$rating,df$favorite_count)
+```
+
+```{r,echo=FALSE}
+ggplot(data = df,
+         aes(x = favorite_count, y = rating))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(ylim = c(0,3), xlim = c(0,50000))
+```
+
+```{r,echo=FALSE}
+ggplot(data = df,
+         aes(x = dog_stage, y = rating))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(ylim = c(0,3))
+```
+
+- User ratings did not significantly correlate with retweet_count or favorite_count, both had p-values > 0.05.  Dog stage did not appear to have any meaningful effect on user ratings either.
+
+#### Dog stage
+
+```{r,echo=FALSE}
+ggplot(aes(dog_stage, 
+              retweet_count), 
+          data = df) +
+    geom_jitter( alpha = .3)  +
+    geom_boxplot( alpha = .5,color = 'blue')+
+    stat_summary(fun.y = "mean", 
+                 geom = "point", 
+                 color = "red", 
+                 shape = 8, 
+                 size = 4)+
+  coord_cartesian(ylim = c(0,25000))
+```
+
+```{r,echo=FALSE}
+ggplot(aes(dog_stage, 
+              favorite_count), 
+          data = df) +
+    geom_jitter( alpha = .3)  +
+    geom_boxplot( alpha = .5,color = 'blue')+
+    stat_summary(fun.y = "mean", 
+                 geom = "point", 
+                 color = "red", 
+                 shape = 8, 
+                 size = 4)+
+  coord_cartesian(ylim = c(0,50000))
+```
+
+It appears having a dog status other than 'None' as a positive effect on retweet_count and favorite_count.
+
+#### Retweet and Favorite counts
+
+```{r,echo=FALSE}
+cor.test(df$retweet_count,df$favorite_count)
+```
+
+```{r,echo=FALSE}
+ ggplot(data = df,
+         aes(x = retweet_count, y = favorite_count))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(xlim = c(0,25000),ylim = c(0,50000))
+```
+
+Retweet and favorite counts are significant for correlation with w p-value < 2.2e-16.
+
+### Elapsed time
+
+
+```{r,echo=FALSE}
+cor.test(df$elapsed_days_y,df$favorite_count)
+```
+
+```{r,echo=FALSE}
+ ggplot(data = df,
+         aes(x = elapsed_days_y, y = favorite_count))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(xlim = c(0,650),ylim = c(0,50000))
+```
+
+
+
+```{r,echo=FALSE}
+cor.test(df$elapsed_days_y,df$retweet_count)
+```
+
+```{r,echo=FALSE}
+ ggplot(data = df,
+         aes(x = elapsed_days_y, y = retweet_count))+
+    geom_point(alpha = 0.1, position = 'jitter')+
+    geom_smooth(method = lm)+
+  coord_cartesian(xlim = c(0,650),ylim = c(0,20000))
+```
+
+- As time goes on favorite count and retweet count trend upwards
+- Elapsed days is significant for increased favorite count and retweet count with a p-value < 2.2e-16 for both.
+### Trivariate Analysis
+
+
+```{r,echo=FALSE}
+  ggplot(data = df,
+         aes(x = retweet_count, y = favorite_count, color = dog_stage))+
+    geom_point(alpha = 0.3, position = 'jitter')+
+  geom_smooth(method = lm, se = FALSE,size = 1)+
+    scale_color_brewer(type = 'div',
+                       palette = 'RdYlBu',direction = -1,
+                       guide=guide_legend(title='Dog Status',
+                                          override.aes = list(alpha = 1)))+ 
+    ggtitle("Retweets, Favorites, and Dog Status")+
+    xlab('Retweet Count')+
+    ylab('Favorite Count')
+```
+
+Here we can see those who had a dog status of 'None' appear to have slope closer to 1, whole those who 'doggo' have a flatter slope.
+
+## Summary
+
+-  User ratings have little or no effect on retweet count or favorite count.
+-  Dog status has no effect on user rating, but it does have a positive effect on retweet count and favorite count for those who are not 'None'.
+-  Retweet count and favorite count are strongly correlated.
+-  As time goes on favorite count and retweet count trend upwards
+-  Elapsed days is significant for increased favorite count and retweet count with a p-value < 2.2e-16 for both.
+
+
